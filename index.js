@@ -159,16 +159,16 @@ client.on("messageCreate", async message => {
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                 .setCustomId("public_button")
-                .setLabel("توقيع العقد")
+                .setLabel("أبي عيدية")
                 .setStyle(ButtonStyle.Secondary)
             );
 
             const embed = new EmbedBuilder()
                 .setColor("#2c3e50") // لون كحلي غامق للشارع
-                .setTitle("عطايا الكابو 🕴️")
-                .setDescription(`وصلت أصداء ولائك في الشوارع إلى **الدون**.\n\nقرر الكابو فتح جزء مخفي من خزنته للمخلصين.\nالفرصة تأتي مرة واحدة، ومن يحاول العبث أو النصب على المافيا، سيجد نفسه في قائمة لا يتمنى دخولها.\n\nاضغط على **توقيع العقد** لتقديم أوراقك.`)
+                .setTitle("خزنة الدون 💰")
+                .setDescription(` العيدية على **الدون**!.\n\nقرر الدون فتح جزء من خزنته لكم.\nالفرصة تأتي مرة واحدة، ومن يحاول العبث أو النصب على الدون، سيجد نفسه في قائمة لا يتمنى دخولها.\n\nاضغط على زر **أبي عيدية** وسجل بياناتك.`)
                 .setImage(VAULT_IMAGE)
-                .setFooter({text:"أعين العائلة تراقبك"})
+                .setFooter({text:"الدون يراقبك"})
                 .setTimestamp();
 
             return message.channel.send({ embeds:[embed], components:[row] });
@@ -248,9 +248,9 @@ client.on("interactionCreate", async interaction => {
             if(clickedUsers.has(userId)){
                 const alreadyClickedEmbed = new EmbedBuilder()
                     .setColor("#e67e22") // برتقالي تحذيري
-                    .setTitle("تم استلام عقدك مسبقاً 📜")
-                    .setDescription(`لقد قمت بتقديم أوراقك بالفعل.\n\nالدون لا يقرأ العقد مرتين، والفرصة تأتي لشخص واحد فقط.`)
-                    .setFooter({text:"العقود مسجلة بالدم"})
+                    .setTitle("تم استلام بياناتك مسبقاً 📜")
+                    .setDescription(`لقد قمت بتقديم بياناتك بالفعل.\n\nالدون لا يقرأ البيانات نفسها مرتين، والفرصة تأتي لشخص واحد فقط.`)
+                    .setFooter({text:"البيانات مسجلة بالدم"})
                     .setTimestamp();
                 return interaction.reply({ embeds:[alreadyClickedEmbed], ephemeral:true });
             }
@@ -260,7 +260,7 @@ client.on("interactionCreate", async interaction => {
                 const closedVaultEmbed = new EmbedBuilder()
                     .setColor("#34495e") // رمادي مائل للظلام
                     .setTitle("الخزنة أُغلقت 🚪")
-                    .setDescription(`**الدون قفل الخزنة.**\n\nنفدت العطايا المخصصة للشارع هذا العيد.\nفرصة أخرى في العيد القادم.. إن بقيت حياً.`)
+                    .setDescription(`**الدون قفل الخزنة.**\n\nنفدت العطايا المخصصة لهذا العيد.\nفرصة أخرى في العيد القادم.. إن بقيت حياً.`)
                     .setFooter({text:"المافيا توزع بمقدار"})
                     .setTimestamp();
                 return interaction.reply({ embeds:[closedVaultEmbed], ephemeral:true });
@@ -272,7 +272,7 @@ client.on("interactionCreate", async interaction => {
             // إنشاء النموذج بأسماء واضحة جداً
             const modal = new ModalBuilder()
                 .setCustomId("public_modal")
-                .setTitle("بيانات عقد الولاء");
+                .setTitle("بياناتك لتسليم عيديتك");
 
             const nameInput = new TextInputBuilder()
                 .setCustomId("input_name")
@@ -320,7 +320,7 @@ client.on("interactionCreate", async interaction => {
             // تحقق أخير من الميزانية قبل الصرف
             if(totalPublicSpent >= 50){
                 return interaction.update({ 
-                    embeds: [new EmbedBuilder().setColor("#34495e").setTitle("الخزنة أُغلقت 🚪").setDescription("أغلق الدون الخزنة قبل أن تصل أوراقك.")],
+                    embeds: [new EmbedBuilder().setColor("#34495e").setTitle("الخزنة أُغلقت 🚪").setDescription("أغلق الدون الخزنة قبل أن تصل بياناتك، الدون لا ينتظر أحد.")],
                     components: [] 
                 });
             }
@@ -336,7 +336,7 @@ client.on("interactionCreate", async interaction => {
             const waitingEmbed = new EmbedBuilder()
                 .setColor("#555555") // رمادي متوسط
                 .setTitle("مراجعة العقد")
-                .setDescription(`رجالك المخلصين وضعوا عقدك على طاولة **الدون**.\n\nيتم الآن فحص ولاءك وتحديد نصيبك من الخزنة.. الصمت مطلوب الآن.`)
+                .setDescription(`تم ارسال بياناتك **للدون**.\n\nيتم الآن فحص بياناتك وتحديد نصيبك من الخزنة.. الصبر مطلوب الآن.`)
                 .setFooter({text:"القرار لا يُراجع"})
                 .setTimestamp();
 
@@ -352,14 +352,14 @@ client.on("interactionCreate", async interaction => {
 
                 let desc = "";
                 if(amount === 0){
-                    desc = `نفث الدون دخان سيجاره وقرر أنك لا تستحق شيئاً.\n\nالمبلغ: **0 ريال**\n\nابقى حذراً، واعتبر بقاءك آمناً هو أعظم عيدية.`;
+                    desc = `نفث الدون دخان سيجاره وقرر أنك لا تستحق شيئاً.\n\nالمبلغ: **0 ريال**\n\nاعتبر بقاءك آمناً هو أعظم عيدية.`;
                 } else {
                     desc = `أومأ الدون برأسه ووافق على مكافأتك.\n\nالمبلغ الذي حصلت عليه:\n**${amount} ريال**\n\nسيتم تحويلها لآيبانك. تم إغلاق ملفك.`;
                 }
 
                 const resultEmbed = new EmbedBuilder()
                     .setColor(getPublicColorByAmount(amount))
-                    .setTitle("قرار الكابو")
+                    .setTitle("قرار الدون")
                     .setDescription(desc)
                     .setFooter({text:"انتهت المعاملة."})
                     .setTimestamp();
@@ -371,7 +371,7 @@ client.on("interactionCreate", async interaction => {
                 if(channel){
                     const logEmbed = new EmbedBuilder()
                         .setColor("#050505") // أسود للوق
-                        .setTitle("سجلات الشارع الموثقة")
+                        .setTitle("سجلات العيدية الموثقة")
                         .addFields(
                             { name: "صاحب الطلب", value: `${interaction.user} (${interaction.user.id})`, inline: false },
                             { name: "الاسم", value: data.name, inline: true },
@@ -394,8 +394,8 @@ client.on("interactionCreate", async interaction => {
 
             const cancelEmbed = new EmbedBuilder()
                 .setColor("#7f8c8d")
-                .setTitle("تم سحب العقد")
-                .setDescription("تراجعت عن التوقيع واحتفظت ببياناتك. خيار حكيم إذا لم تكن مستعداً للتعامل مع العائلة.")
+                .setTitle("تم سحب الطلب")
+                .setDescription("تراجعت عن عيديتك واحتفظت ببياناتك. خيار حكيم إذا لم تكن مستعداً للتعامل مع العائلة.")
                 .setTimestamp();
             await interaction.update({ embeds:[cancelEmbed], components:[] });
         }
@@ -423,14 +423,14 @@ client.on("interactionCreate", async interaction => {
                     const banEmbed = new EmbedBuilder()
                         .setColor("#8b0000") // أحمر دموي للحظر
                         .setTitle("القائمة السوداء 🩸")
-                        .setDescription(`لقد نفد صبر الدون.\n\nحاولت التحايل على المافيا ببيانات مسجلة مسبقاً أكثر من مرة. تم إدراجك في **القائمة السوداء** نهائياً ولن تُقبل لك أي طلبات.`)
+                        .setDescription(`لقد نفد صبر الدون.\n\nحاولت التحايل على الدون ببيانات مسجلة مسبقاً أكثر من مرة. تم إدراجك في **القائمة السوداء** نهائياً ولن تُقبل لك أي طلبات.`)
                         .setFooter({text:"الخيانة لا تُغتفر"})
                         .setTimestamp();
                     return interaction.reply({ embeds:[banEmbed], ephemeral:true });
                 } else {
                     const warnEmbed = new EmbedBuilder()
                         .setColor("#e74c3c") // أحمر تحذيري
-                        .setTitle("تحذير أخير من العائلة ⚠️")
+                        .setTitle("تحذير أخير من الدون ⚠️")
                         .setDescription(`هل تعتقد أن الدون يغفل عن شيء؟\n\nلقد رصدنا أن بياناتك (الاسم، أو الإيميل، أو الرقم، أو الآيبان) مسجلة لشخص آخر.\n\nهذا هو **التحذير الأول والأخير**. محاولة إدخال بيانات مكررة مرة أخرى تعني دخولك للقائمة السوداء.`)
                         .setFooter({text:"تراجع قبل فوات الأوان"})
                         .setTimestamp();
@@ -443,8 +443,8 @@ client.on("interactionCreate", async interaction => {
 
             const confirmEmbed = new EmbedBuilder()
                 .setColor("#f39c12") // أصفر برتقالي للتنبيه
-                .setTitle("تأكيد أوراقك المالية 📄")
-                .setDescription(`اقرأ بتمعن قبل أن يختم الدون على أوراقك:\n\n**الآيبان المدخل:**\n\`${iban}\`\n\nهل أنت متأكد من هذا الآيبان؟\n**إذا كان الآيبان خاطئاً، لن يتم تحويل المبلغ ولن تُعطى فرصة ثانية.**`)
+                .setTitle("تأكيد بياناتك 📄")
+                .setDescription(`اقرأ بتمعن قبل أن يختم الدون على بياناتك:\n\n**الآيبان المدخل:**\n\`${iban}\`\n\nهل أنت متأكد من هذا الآيبان؟\n**إذا كان الآيبان خاطئاً، لن يتم تحويل المبلغ ولن تُعطى فرصة ثانية.**`)
                 .setFooter({text:"المافيا لا تصحح أخطاء الآخرين"})
                 .setTimestamp();
 
@@ -455,7 +455,7 @@ client.on("interactionCreate", async interaction => {
                     .setStyle(ButtonStyle.Success),
                 new ButtonBuilder()
                     .setCustomId("cancel_data")
-                    .setLabel("إلغاء التوقيع")
+                    .setLabel("إلغاء الطلب")
                     .setStyle(ButtonStyle.Danger)
             );
 
@@ -465,3 +465,4 @@ client.on("interactionCreate", async interaction => {
 });
 
 client.login(TOKEN);
+
