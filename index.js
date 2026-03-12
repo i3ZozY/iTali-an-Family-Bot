@@ -15,7 +15,7 @@ GatewayIntentBits.MessageContent
 ]
 });
 
-const TOKEN = "MTQ4MTY5OTU0MTkyNDQ0NjMxOQ.GhKlAa.yVzbtUWTiRiIsRUmJ8Uj-cYeoYoCXZGstfNmPc";
+const TOKEN = process.env.TOKEN;
 
 const LOG_CHANNEL = "1481705807560310874";
 
@@ -187,5 +187,6 @@ components:[row]
 }
 
 });
+
 
 client.login(TOKEN);
