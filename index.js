@@ -11,7 +11,7 @@ const {
   TextInputBuilder,
   TextInputStyle,
   ModalSubmitInteraction,
-  Partials
+  Partialsلغلغلل
 } = require("discord.js");
 
 // سيرفر بسيط لمنع نوم الاستضافة
@@ -246,3 +246,4 @@ client.on("messageCreate", async message => {
 });
 
 client.login(TOKEN);
+
