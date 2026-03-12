@@ -1,3 +1,15 @@
+const express = require("express");
+const app = express();
+
+// سيرفر بسيط لمنع نوم الاستضافة
+app.get("/", (req, res) => {
+res.send("Bot is alive");
+});
+
+app.listen(3000, () => {
+console.log("Keep alive server started");
+});
+
 const { 
 Client, 
 GatewayIntentBits, 
@@ -187,6 +199,5 @@ components:[row]
 }
 
 });
-
 
 client.login(TOKEN);
