@@ -93,13 +93,12 @@ function getPublicColorByAmount(amount){
 }
 
 client.once("ready", () => {
-    console.log("الدون جاهز... وكل عام وأنتم بخير.");
+    console.log("الدون جاهز... والسيجار مشتعل. عيد فطر مبارك.");
 });
 
 client.on("messageCreate", async message => {
     if(message.author.bot) return;
 
-    // منع البوت من العمل في سيرفرات أخرى (السماح بالخاص والسيرفر المحدد فقط)
     if(message.guild && message.guild.id !== TARGET_GUILD_ID) return;
 
     const args = message.content.split(" ");
@@ -108,36 +107,31 @@ client.on("messageCreate", async message => {
     // ================= أوامر الإدارة (للدون فقط) =================
     if (ADMIN_IDS.includes(message.author.id)) {
         
-        // --- حظر من عيدية الدون ---
         if (command === "!eid_public_block" && args[1]) {
             const targetId = args[1].replace(/[<@!>]/g, '');
             publicBlacklistedUsers.add(targetId);
-            return message.reply(`تم منع ${targetId} من استلام عيدية الدون.`);
+            return message.reply(`تم وضع ${targetId} في القائمة السوداء. المافيا لا ترحم.`);
         }
 
-        // --- فك الحظر من عيدية الدون ---
         if (command === "!eid_public_unblock" && args[1]) {
             const targetId = args[1].replace(/[<@!>]/g, '');
             publicBlacklistedUsers.delete(targetId);
             duplicateStrikes.delete(targetId);
-            return message.reply(`تم فك الحظر عن ${targetId} ليتمكن من استلام عيدية الدون.`);
+            return message.reply(`تم العفو عن ${targetId}. فليشكر الدون على هذه الفرصة.`);
         }
 
-        // --- حظر من العيدية العائلية ---
         if (command === "!eid_family_block" && args[1]) {
             const targetId = args[1].replace(/[<@!>]/g, '');
             familyBlacklistedUsers.add(targetId);
-            return message.reply(`تم حرمان ${targetId} من عيدية العائلة.`);
+            return message.reply(`تم طرد ${targetId} من العائلة. الخيانة ثمنها غالي.`);
         }
 
-        // --- فك الحظر من العيدية العائلية ---
         if (command === "!eid_family_unblock" && args[1]) {
             const targetId = args[1].replace(/[<@!>]/g, '');
             familyBlacklistedUsers.delete(targetId);
-            return message.reply(`تم العفو عن ${targetId} وإعادته لاستلام عيدية العائلة.`);
+            return message.reply(`عاد ${targetId} لصفوف العائلة بأمر من الدون.`);
         }
 
-        // --- تصفير ميزانية وسجلات عيدية الدون ---
         if (command === "!eid_public_reset") {
             publicUsers.clear();
             publicNames.clear();
@@ -147,48 +141,41 @@ client.on("messageCreate", async message => {
             clickedUsers.clear();
             duplicateStrikes.clear();
             totalPublicSpent = 0;
-            return message.reply("تم تصفير ميزانية عيدية الدون (عادت 50 ريال) ومسح السجلات لبدء التوزيع من جديد.");
+            return message.reply("تم تصفير ميزانية عيدية الدون (50 ريال). السجلات نُظفت بالدم.");
         }
 
-        // --- تصفير سجلات العائلة ---
         if (command === "!eid_family_reset") {
             claimedUsers.clear();
-            return message.reply("تم مسح دفاتر العائلة لبدء التوزيع من جديد (ميزانية العائلة مفتوحة).");
+            return message.reply("تم مسح دفاتر العائلة. الخزنة مفتوحة بلا حدود من جديد.");
         }
     }
 
-    // ================= أمر المساعدة (!help) =================
     if (command === "!help") {
         const helpEmbed = new EmbedBuilder()
             .setColor("#2c3e50")
-            .setTitle("📜 أوامر نظام العيدية")
-            .setDescription("إليك جميع الأوامر المتاحة:")
-            .addFields(
-                { name: "أوامر عامة:", value: "`!eid` - لطلب العيدية (في الخاص للجميع، وفي السيرفر للإدارة فقط)." }
-            )
+            .setTitle("📜 أوامر نظام المافيا")
+            .setDescription("إليك الأوامر المتاحة في أروقة الدون:")
+            .addFields({ name: "أوامر عامة:", value: "`!eid` - طلب العيدية (في الخاص للشارع، وفي السيرفر للعائلة فقط)." })
             .setThumbnail(client.user.displayAvatarURL());
 
         if (ADMIN_IDS.includes(message.author.id)) {
             helpEmbed.addFields(
-                { name: "✨ أوامر عيدية الدون:", value: "`!eid_public_block <id>` - حظر شخص.\n`!eid_public_unblock <id>` - فك الحظر.\n`!eid_public_reset` - تصفير السجلات والميزانية (50 ريال)." },
-                { name: "🩸 أوامر عيدية العائلة:", value: "`!eid_family_block <id>` - حظر شخص.\n`!eid_family_unblock <id>` - فك الحظر.\n`!eid_family_reset` - تصفير سجلات الاستلام (لا يوجد حد للميزانية)." }
+                { name: "🛡️ إدارة عيدية الدون (الشارع):", value: "`!eid_public_block <id>`\n`!eid_public_unblock <id>`\n`!eid_public_reset`" },
+                { name: "🩸 إدارة عيدية العائلة:", value: "`!eid_family_block <id>`\n`!eid_family_unblock <id>`\n`!eid_family_reset`" }
             );
         }
-        helpEmbed.setFooter({ text: "كل عام وأنتم بخير 🌙" }).setTimestamp();
-        
+        helpEmbed.setFooter({ text: "الدون يراقب كل شيء.. عيد فطر مبارك." }).setTimestamp();
         return message.reply({ embeds: [helpEmbed] });
     }
 
-    // ================= أمر العيدية (!eid) =================
     if(command === "!eid"){
         const userId = message.author.id;
 
-        // حماية السبام (30 ثانية)
         if(cooldowns.has(userId)){
             const expiry = cooldowns.get(userId) + 30000;
             if(Date.now() < expiry){
                 const left = ((expiry - Date.now()) / 1000).toFixed(1);
-                return message.reply(`مهلاً يا صديقي! انتظر ${left} ثانية قبل المحاولة مجدداً.`).then(m => setTimeout(() => m.delete().catch(()=>null), 5000));
+                return message.reply(`تأنَّ قليلاً. الدون لا يحب الإزعاج. انتظر ${left} ثانية.`).then(m => setTimeout(() => m.delete().catch(()=>null), 5000));
             }
         }
         cooldowns.set(userId, Date.now());
@@ -199,20 +186,17 @@ client.on("messageCreate", async message => {
                 const isAdmin = message.member.permissions.has(PermissionsBitField.Flags.Administrator) || message.guild.ownerId === message.author.id;
                 
                 if(!isAdmin){
-                    return message.reply("🚫 هذا الأمر مخصص للإدارة فقط لتوزيع عيدية العائلة. اذهب إلى الخاص واكتب `!eid` لطلب عيدية الدون.");
+                    return message.reply("🚫 هذا الأمر لزعماء العائلة فقط. إذا أردت عيدية الدون، اذهب إلى الخاص واكتب `!eid`.");
                 }
 
                 const row = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder()
-                    .setCustomId("eidiya_family_button")
-                    .setLabel("أبي عيدية")
-                    .setStyle(ButtonStyle.Success)
+                    new ButtonBuilder().setCustomId("eidiya_family_button").setLabel("أبي عيدية").setStyle(ButtonStyle.Success)
                 );
 
                 const embed = new EmbedBuilder()
                     .setColor("#8B0000") 
                     .setTitle("خزنة العائلة 💰")
-                    .setDescription(`بأمر من **الدون** تم فتح خزنة العائلة اليوم.\n\nقرر الدون توزيع عيديات على أفراد العائلة تقديرًا لولائهم.\n\nاضغط على زر **أبي عيدية** وضع الآيبان الخاص بك ليحدد الدون نصيبك.\n\nكل عضو يحصل على عيدية واحدة فقط.`)
+                    .setDescription(`بمناسبة حلول عيد الفطر المبارك، أمر **الدون** بفتح الخزنة للعائلة.\n\nالولاء يُكافأ هنا. اضغط على الزر وضع الآيبان الخاص بك.\n\n*وكل عام وأنتم السند الحقيقي للدون.*`)
                     .setImage(VAULT_IMAGE)
                     .setFooter({text:"العائلة فوق كل شيء"})
                     .setTimestamp();
@@ -223,18 +207,15 @@ client.on("messageCreate", async message => {
             // --- 2. الخاص (عيدية الدون) ---
             else {
                 const row = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder()
-                    .setCustomId("public_button")
-                    .setLabel("طلب العيدية 🎁")
-                    .setStyle(ButtonStyle.Primary)
+                    new ButtonBuilder().setCustomId("public_button").setLabel("عيدية الدون").setStyle(ButtonStyle.Primary) // الزر باللون الأزرق
                 );
 
                 const embed = new EmbedBuilder()
-                    .setColor("#f1c40f") 
-                    .setTitle("✨ عيدية الدون ✨")
-                    .setDescription(`**كل عام وأنتم بخير! 🌙**\n\nبمناسبة العيد السعيد، قرر الدون توزيع عيدية خاصة لكم لإدخال السرور على قلوبكم.\nالميزانية محدودة والفرصة تأتي مرة واحدة، فتأكد من إدخال بياناتك بشكل صحيح.\n\nاضغط على زر **طلب العيدية** وسجل بياناتك.`)
+                    .setColor("#2c3e50") 
+                    .setTitle("خزنة الدون 💼")
+                    .setDescription(`**بمناسبة عيد الفطر المبارك، يهنئكم الدون..**\n\nولكن تذكر: قوانين المافيا لا تتغير.\nقرر الدون فتح جزء من خزنته (50 ريالاً فقط) تُوزع على من يستحق.\n\nالفرصة تأتي مرة واحدة. إياك والعبث أو التلاعب بالبيانات، فالقائمة السوداء تنتظر.\n\nاضغط على الزر أدناه وسجل بياناتك.`)
                     .setImage(VAULT_IMAGE)
-                    .setFooter({text:"عيدكم مبارك 🎉"})
+                    .setFooter({text:"المافيا لا تغفر الأخطاء. عيد مبارك."})
                     .setTimestamp();
 
                 return message.channel.send({ embeds:[embed], components:[row] });
@@ -250,45 +231,26 @@ client.on("interactionCreate", async interaction => {
     try {
         if(interaction.isButton()){
             
-            // --- زر عيدية العائلة ---
             if(interaction.customId === "eidiya_family_button"){
                 const userId = interaction.user.id;
-                
-                if(familyBlacklistedUsers.has(userId)){
-                    return interaction.reply({ content: "☠️ لقد تم طردك من العائلة. لا يحق لك المطالبة بأي عيدية.", ephemeral: true });
-                }
+                if(familyBlacklistedUsers.has(userId)) return interaction.reply({ content: "☠️ لقد تم طردك من العائلة. لا عيدية لك.", ephemeral: true });
+                if(claimedUsers.has(userId)) return interaction.reply({ embeds:[new EmbedBuilder().setColor("#ff0000").setTitle("🚫 دفتر الدون لا ينسى").setDescription(`استلمت نصيبك مسبقاً. الطمع يدمر الرجال.`)], ephemeral:true });
 
-                if(claimedUsers.has(userId)){
-                    const rejectEmbed = new EmbedBuilder().setColor("#ff0000").setTitle("🚫 تم تسجيل اسمك مسبقًا").setDescription(`اسمك مسجل بالفعل في **دفتر الدون**.\nلقد استلمت عيديتك مسبقًا.`);
-                    return interaction.reply({ embeds:[rejectEmbed], ephemeral:true });
-                }
-
-                const modal = new ModalBuilder().setCustomId("family_modal").setTitle("أدخل الآيبان البنكي");
+                const modal = new ModalBuilder().setCustomId("family_modal").setTitle("توقيع العائلة");
                 const ibanInput = new TextInputBuilder().setCustomId("input_family_iban").setLabel("الآيبان البنكي (SA + 22 رقم)").setStyle(TextInputStyle.Short).setRequired(true);
                 modal.addComponents(new ActionRowBuilder().addComponents(ibanInput));
                 await interaction.showModal(modal);
             }
 
-            // --- زر عيدية الدون (الخاص) ---
             if(interaction.customId === "public_button"){
                 const userId = interaction.user.id;
-
-                if(publicBlacklistedUsers.has(userId)){
-                    const blacklistEmbed = new EmbedBuilder().setColor("#e74c3c").setTitle("عذراً 🚫").setDescription(`تم حظر حسابك من استلام عيدية الدون بسبب مخالفة سابقة.`);
-                    return interaction.reply({ embeds:[blacklistEmbed], ephemeral:true });
-                }
-
-                if(clickedUsers.has(userId)){
-                    return interaction.reply({ content: "📜 لقد قمت بتقديم بياناتك بالفعل. نتمنى لك عيداً سعيداً!", ephemeral: true });
-                }
-
-                if(totalPublicSpent >= 50){
-                    return interaction.reply({ content: "🚪 **كل عام وأنتم بخير!** للأسف نفدت الميزانية المخصصة لعيدية الدون هذا العيد.", ephemeral: true });
-                }
+                if(publicBlacklistedUsers.has(userId)) return interaction.reply({ embeds:[new EmbedBuilder().setColor("#000000").setTitle("القائمة السوداء ☠️").setDescription(`مكانك في الظلام. المافيا أغلقت أبوابها في وجهك.`)], ephemeral:true });
+                if(clickedUsers.has(userId)) return interaction.reply({ content: "📜 بياناتك قيد المراجعة أو تم استلامها. الدون لا ينظر للورقة مرتين.", ephemeral: true });
+                if(totalPublicSpent >= 50) return interaction.reply({ content: "🚪 أُغلقت الخزنة. نفدت عطايا الدون لهذا العيد. كل عام وأنت بخير.", ephemeral: true });
 
                 clickedUsers.add(userId);
 
-                const modal = new ModalBuilder().setCustomId("public_modal").setTitle("بيانات استلام العيدية 🎁");
+                const modal = new ModalBuilder().setCustomId("public_modal").setTitle("عقد الدون 📜");
                 const nameInput = new TextInputBuilder().setCustomId("input_name").setLabel("الاسم الكامل (الرباعي)").setStyle(TextInputStyle.Short).setRequired(true);
                 const emailInput = new TextInputBuilder().setCustomId("input_email").setLabel("الإيميل (يجب أن يحتوي على @)").setStyle(TextInputStyle.Short).setRequired(true);
                 const phoneInput = new TextInputBuilder().setCustomId("input_phone").setLabel("الهاتف (10 أرقام)").setStyle(TextInputStyle.Short).setRequired(true);
@@ -304,16 +266,36 @@ client.on("interactionCreate", async interaction => {
                 await interaction.showModal(modal);
             }
 
-            // --- أزرار التأكيد (عيدية الدون) ---
+            // --- زر تعديل البيانات ---
+            if(interaction.customId === "edit_data"){
+                const userId = interaction.user.id;
+                const data = pendingSubmissions.get(userId);
+                
+                if(!data) return interaction.reply({ content: "انتهت صلاحية الوثيقة. أعد الطلب من البداية.", ephemeral: true });
+
+                const modal = new ModalBuilder().setCustomId("public_modal").setTitle("تعديل البيانات 📝");
+                const nameInput = new TextInputBuilder().setCustomId("input_name").setLabel("الاسم الكامل (الرباعي)").setStyle(TextInputStyle.Short).setRequired(true).setValue(data.name);
+                const emailInput = new TextInputBuilder().setCustomId("input_email").setLabel("الإيميل").setStyle(TextInputStyle.Short).setRequired(true).setValue(data.email);
+                const phoneInput = new TextInputBuilder().setCustomId("input_phone").setLabel("الهاتف").setStyle(TextInputStyle.Short).setRequired(true).setValue(data.phone);
+                const ibanInput = new TextInputBuilder().setCustomId("input_iban").setLabel("الآيبان").setStyle(TextInputStyle.Short).setRequired(true).setValue(data.iban);
+
+                modal.addComponents(
+                    new ActionRowBuilder().addComponents(nameInput),
+                    new ActionRowBuilder().addComponents(emailInput),
+                    new ActionRowBuilder().addComponents(phoneInput),
+                    new ActionRowBuilder().addComponents(ibanInput)
+                );
+
+                await interaction.showModal(modal);
+            }
+
+            // --- زر التأكيد ---
             if(interaction.customId === "confirm_data"){
                 const userId = interaction.user.id;
                 const data = pendingSubmissions.get(userId);
                 
-                if(!data) return interaction.reply({ content: "انتهت صلاحية الجلسة. يرجى المحاولة مرة أخرى.", ephemeral: true });
-
-                if(totalPublicSpent >= 50){
-                    return interaction.update({ embeds: [new EmbedBuilder().setColor("#34495e").setTitle("الخزنة أُغلقت 🚪").setDescription("عذراً، انتهت الميزانية قبل اكتمال طلبك. عيدك مبارك!")], components: [] });
-                }
+                if(!data) return interaction.reply({ content: "الوثيقة اختفت. حاول مجدداً.", ephemeral: true });
+                if(totalPublicSpent >= 50) return interaction.update({ embeds: [new EmbedBuilder().setColor("#34495e").setTitle("الخزنة أُغلقت 🚪").setDescription("عذراً، أغلق الدون الخزنة. عيد فطر مبارك.")], components: [] });
 
                 publicUsers.add(userId);
                 publicNames.add(data.name);
@@ -322,7 +304,7 @@ client.on("interactionCreate", async interaction => {
                 publicIbans.add(data.iban);
                 pendingSubmissions.delete(userId); 
 
-                const waitingEmbed = new EmbedBuilder().setColor("#f39c12").setTitle("مراجعة البيانات ⏳").setDescription(`تم إرسال بياناتك بنجاح.\nيتم الآن تحديد نصيبك من عيدية الدون.. لحظات من فضلك!`);
+                const waitingEmbed = new EmbedBuilder().setColor("#555555").setTitle("مراجعة القرار ⏳").setDescription(`ورقتك الآن بين يدي **الدون**.\nيتم اتخاذ القرار النهائي.. الهدوء مطلوب.`);
                 await interaction.update({ embeds:[waitingEmbed], components:[] });
 
                 setTimeout(async () => {
@@ -331,15 +313,15 @@ client.on("interactionCreate", async interaction => {
                     totalPublicSpent += amount;
 
                     let desc = amount === 0 
-                        ? `حظاً أوفر هذه المرة! نصيبك من العشوائية كان **0 ريال**.\n\nلكن الأهم.. **كل عام وأنت بخير وعيد مبارك! 🌙✨**`
-                        : `**عيدك مبارك! 🎉**\n\nلقد حصلت على عيدية بقيمة:\n**${amount} ريال**\n\nسيتم تحويلها لآيبانك قريباً. كل عام وأنت بخير!`;
+                        ? `نفث الدون دخان سيجاره وقرر أنك لا تستحق شيئاً.\n\nالمبلغ: **0 ريال**\nاعتبر بقاءك آمناً هو أعظم عيدية. كل عام وأنت بخير.`
+                        : `أومأ الدون برأسه، قرارٌ حكيم.\n\nالمبلغ:\n**${amount} ريال**\nسيتم التحويل لآيبانك. عيد فطر مبارك.`;
 
-                    const resultEmbed = new EmbedBuilder().setColor(getPublicColorByAmount(amount)).setTitle("عيدية الدون 🎁").setDescription(desc).setTimestamp();
+                    const resultEmbed = new EmbedBuilder().setColor(getPublicColorByAmount(amount)).setTitle("القرار النهائي ⚖️").setDescription(desc).setTimestamp();
                     try { await interaction.editReply({ embeds:[resultEmbed] }); } catch(e){}
 
                     const channel = client.channels.cache.get(PUBLIC_LOG_CHANNEL);
                     if(channel){
-                        const logEmbed = new EmbedBuilder().setColor("#f1c40f").setTitle("سجلات عيدية الدون").addFields({ name: "صاحب الطلب", value: `${interaction.user}`, inline: false },{ name: "الآيبان", value: data.iban, inline: false },{ name: "المبلغ", value: `**${amount} ريال**`, inline: false });
+                        const logEmbed = new EmbedBuilder().setColor("#1c1c1c").setTitle("سجلات عيدية الدون").addFields({ name: "صاحب الطلب", value: `${interaction.user}`, inline: false },{ name: "الآيبان", value: data.iban, inline: false },{ name: "المبلغ", value: `**${amount} ريال**`, inline: false });
                         channel.send({embeds:[logEmbed]});
                     }
                 }, 8000);
@@ -348,47 +330,32 @@ client.on("interactionCreate", async interaction => {
             if(interaction.customId === "cancel_data"){
                 pendingSubmissions.delete(interaction.user.id);
                 clickedUsers.delete(interaction.user.id); 
-                await interaction.update({ embeds:[new EmbedBuilder().setColor("#7f8c8d").setTitle("تم الإلغاء").setDescription("تم إلغاء طلبك بنجاح. عيدك مبارك!")], components:[] });
+                await interaction.update({ embeds:[new EmbedBuilder().setColor("#7f8c8d").setTitle("تم التراجع").setDescription("انسحبت بهدوء. قرار قد يحفظ حياتك.")], components:[] });
             }
         }
 
-        // ================= النماذج (Modals) =================
         if(interaction.isModalSubmit()){
-            
-            // --- مودل العائلة ---
             if(interaction.customId === "family_modal"){
                 const userId = interaction.user.id;
                 let iban = interaction.fields.getTextInputValue("input_family_iban").replace(/\s+/g, '');
 
-                if(!/^SA\d{22}$/i.test(iban)){
-                    return interaction.reply({ content: "🚫 صيغة الآيبان خاطئة! يجب أن يبدأ بـ SA ويليه 22 رقماً.", ephemeral: true });
-                }
+                if(!/^SA\d{22}$/i.test(iban)) return interaction.reply({ content: "🚫 صيغة الآيبان خاطئة! يجب أن يبدأ بـ SA ويليه 22 رقماً.", ephemeral: true });
 
                 claimedUsers.add(userId);
 
-                const waitingEmbed = new EmbedBuilder().setColor("#2f3136").setTitle("خزنة العائلة").setDescription(`قام الدون بفتح **خزنة العائلة** الآن ويقوم بتسجيل الآيبان الخاص بك.\nانتظر قليلًا بينما يحدد نصيبك.`);
+                const waitingEmbed = new EmbedBuilder().setColor("#2f3136").setTitle("خزنة العائلة").setDescription(`الدون يسجل اسمك في دفتر العائلة.. انتظر قرار التوزيع.`);
                 await interaction.reply({ embeds:[waitingEmbed], ephemeral:true });
 
                 setTimeout(async () => {
                     let amount = getEidiya();
-
-                    const resultEmbed = new EmbedBuilder()
-                        .setColor(getColorByAmount(amount))
-                        .setTitle("عيدية العائلة")
-                        .setDescription(`المبلغ:\n**${amount} ريال**\n\nالآيبان المسجل: \`${iban}\``)
-                        .setTimestamp();
-
+                    const resultEmbed = new EmbedBuilder().setColor(getColorByAmount(amount)).setTitle("عيدية العائلة").setDescription(`المبلغ:\n**${amount} ريال**\n\nالآيبان المسجل: \`${iban}\`\n*عيد فطر سعيد يا ابن العائلة.*`).setTimestamp();
                     try { await interaction.editReply({ embeds:[resultEmbed] }); } catch(e){}
 
                     const channel = client.channels.cache.get(LOG_CHANNEL);
-                    if(channel){
-                        const logEmbed = new EmbedBuilder().setColor("#111111").setTitle("دفتر الدون - العائلة").setDescription(`${interaction.user} استلم عيديته.\nالمبلغ: **${amount} ريال**\nالآيبان: \`${iban}\``);
-                        channel.send({embeds:[logEmbed]});
-                    }
+                    if(channel) channel.send({embeds:[new EmbedBuilder().setColor("#111111").setTitle("دفتر الدون - العائلة").setDescription(`${interaction.user} استلم عيديته.\nالمبلغ: **${amount} ريال**\nالآيبان: \`${iban}\``)]});
                 }, 8000);
             }
 
-            // --- مودل عيدية الدون ---
             if(interaction.customId === "public_modal"){
                 const userId = interaction.user.id;
                 const name = interaction.fields.getTextInputValue("input_name").trim();
@@ -398,41 +365,47 @@ client.on("interactionCreate", async interaction => {
 
                 if(!email.includes("@")){
                     clickedUsers.delete(userId); 
-                    return interaction.reply({ content: "🚫 الإيميل غير صحيح. يجب أن يحتوي على علامة @.", ephemeral: true });
+                    return interaction.reply({ content: "🚫 الإيميل غير صحيح. المافيا تحتاج عنواناً دقيقاً.", ephemeral: true });
                 }
                 if(!/^\d{10}$/.test(phone)){
                     clickedUsers.delete(userId);
-                    return interaction.reply({ content: "🚫 رقم الهاتف غير صحيح. يجب أن يتكون من 10 أرقام فقط.", ephemeral: true });
+                    return interaction.reply({ content: "🚫 رقم الهاتف يجب أن يكون 10 أرقام بالضبط.", ephemeral: true });
                 }
                 if(!/^SA\d{22}$/i.test(iban)){
                     clickedUsers.delete(userId);
-                    return interaction.reply({ content: "🚫 الآيبان غير صحيح. يجب أن يبدأ بـ SA ويليه 22 رقماً.", ephemeral: true });
+                    return interaction.reply({ content: "🚫 الآيبان خاطئ! يجب أن يبدأ بـ SA متبوعاً بـ 22 رقماً.", ephemeral: true });
                 }
 
-                if(publicNames.has(name) || publicEmails.has(email) || publicPhones.has(phone) || publicIbans.has(iban)){
+                // تجنب احتساب ضربة غش إذا كان المستخدم يعدل بياناته ولم يغيرها
+                const isEditingOwnData = pendingSubmissions.has(userId) && 
+                    pendingSubmissions.get(userId).iban === iban && 
+                    pendingSubmissions.get(userId).email === email;
+
+                if(!isEditingOwnData && (publicNames.has(name) || publicEmails.has(email) || publicPhones.has(phone) || publicIbans.has(iban))){
                     let strikes = duplicateStrikes.get(userId) || 0;
                     strikes++;
                     duplicateStrikes.set(userId, strikes);
 
                     if(strikes >= 2){
                         publicBlacklistedUsers.add(userId);
-                        return interaction.reply({ content: "🚫 تم حظر حسابك بسبب تكرار إدخال بيانات مسجلة مسبقاً.", ephemeral:true });
+                        return interaction.reply({ content: "🩸 لقد غضب الدون. تم رميك في القائمة السوداء.", ephemeral:true });
                     } else {
                         clickedUsers.delete(userId); 
-                        return interaction.reply({ content: "⚠️ تحذير: هذه البيانات مسجلة لشخص آخر. المحاولة القادمة ستؤدي إلى حظرك.", ephemeral:true });
+                        return interaction.reply({ content: "⚠️ تحذير المافيا الأول: هذه البيانات مستخدمة مسبقاً. المحاولة القادمة ثمنها غالٍ.", ephemeral:true });
                     }
                 }
 
                 pendingSubmissions.set(userId, { name, email, phone, iban });
 
                 const confirmEmbed = new EmbedBuilder()
-                    .setColor("#2ecc71")
-                    .setTitle("تأكيد بياناتك 📄")
-                    .setDescription(`**الآيبان المدخل:**\n\`${iban}\`\n\nهل أنت متأكد من صحة الآيبان لتصلك العيدية؟`);
+                    .setColor("#f39c12")
+                    .setTitle("وثيقة الدون 📄")
+                    .setDescription(`اقرأ بتمعن قبل الختم:\n\n**الآيبان المدخل:**\n\`${iban}\`\n\nهل المعلومات صحيحة؟ الدون لا يصحح أخطاء الآخرين.`);
 
                 const confirmRow = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId("confirm_data").setLabel("نعم، الآيبان صحيح").setStyle(ButtonStyle.Success),
-                    new ButtonBuilder().setCustomId("cancel_data").setLabel("إلغاء الطلب").setStyle(ButtonStyle.Danger)
+                    new ButtonBuilder().setCustomId("confirm_data").setLabel("نعم، الختم نهائي").setStyle(ButtonStyle.Success),
+                    new ButtonBuilder().setCustomId("edit_data").setLabel("تعديل البيانات").setStyle(ButtonStyle.Secondary),
+                    new ButtonBuilder().setCustomId("cancel_data").setLabel("تمزيق الوثيقة").setStyle(ButtonStyle.Danger)
                 );
 
                 await interaction.reply({ embeds:[confirmEmbed], components:[confirmRow], ephemeral:true });
