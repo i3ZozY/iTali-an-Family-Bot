@@ -192,12 +192,8 @@ function startCleanupInterval() {
     }, 3600000);
 }
 
-// ================= دالة معالجة النصوص المختلطة =================
-const LRM = '\u200E'; // علامة Left-to-Right Mark
-
-function formatMixed(arabicPart, mixedPart) {
-    return `${arabicPart} ${LRM}${mixedPart}${LRM}`;
-}
+// ================= علامة LRM لضبط الاتجاه =================
+const LRM = '\u200E';
 
 // ================= الدوال المساعدة =================
 function getRandomReward(rewardsArray) {
@@ -261,26 +257,26 @@ client.on("messageCreate", async message => {
                 const targetId = args[1].replace(/[<@!>]/g, '');
                 botData.publicBlacklist.add(targetId);
                 await saveToDiscord();
-                return message.reply(`تم إدراج ${targetId} في القائمة السوداء الخاصة بعيدية الدون.`);
+                return message.reply(`تم إدراج ${LRM}${targetId}${LRM} في القائمة السوداء الخاصة بعيدية الدون.`);
             }
             if (command === "!eid_public_unblock" && args[1]) {
                 const targetId = args[1].replace(/[<@!>]/g, '');
                 botData.publicBlacklist.delete(targetId);
                 botData.duplicateStrikes.delete(targetId);
                 await saveToDiscord();
-                return message.reply(`تم العفو عن ${targetId} من القائمة السوداء لعيدية الدون.`);
+                return message.reply(`تم العفو عن ${LRM}${targetId}${LRM} من القائمة السوداء لعيدية الدون.`);
             }
             if (command === "!eid_family_block" && args[1]) {
                 const targetId = args[1].replace(/[<@!>]/g, '');
                 botData.familyBlacklist.add(targetId);
                 await saveToDiscord();
-                return message.reply(`تم حظر ${targetId} من عيدية العائلة.`);
+                return message.reply(`تم حظر ${LRM}${targetId}${LRM} من عيدية العائلة.`);
             }
             if (command === "!eid_family_unblock" && args[1]) {
                 const targetId = args[1].replace(/[<@!>]/g, '');
                 botData.familyBlacklist.delete(targetId);
                 await saveToDiscord();
-                return message.reply(`تم فك حظر ${targetId} من عيدية العائلة.`);
+                return message.reply(`تم فك حظر ${LRM}${targetId}${LRM} من عيدية العائلة.`);
             }
             if (command === "!eid_public_reset") {
                 botData.publicUsers.clear();
@@ -336,12 +332,12 @@ client.on("messageCreate", async message => {
                     color: 0xffd700,
                     title: '📊 إحصائيات إمبراطورية الدون',
                     fields: [
-                        { name: '💰 إجمالي المبالغ الموزعة (عيدية الدون)', value: formatMixed('', `${botData.totalPublicSpent} ريال`), inline: true },
-                        { name: '👥 عدد المستفيدين (العائلة)', value: formatMixed('', `${botData.claimedUsers.size} شخص`), inline: true },
-                        { name: '🏆 أعلى عيدية تم رصدها', value: formatMixed('', `${botData.highestActualClaim} ريال`), inline: false },
-                        { name: '📋 في انتظار التأكيد', value: formatMixed('', `${botData.pendingSubmissions.size}`), inline: true },
-                        { name: '⛔ محظورين (دون)', value: formatMixed('', `${botData.publicBlacklist.size}`), inline: true },
-                        { name: '⛔ محظورين (عائلة)', value: formatMixed('', `${botData.familyBlacklist.size}`), inline: true }
+                        { name: '💰 إجمالي المبالغ الموزعة (عيدية الدون)', value: `${LRM}${botData.totalPublicSpent}${LRM} ريال`, inline: true },
+                        { name: '👥 عدد المستفيدين (العائلة)', value: `${LRM}${botData.claimedUsers.size}${LRM} شخص`, inline: true },
+                        { name: '🏆 أعلى عيدية تم رصدها', value: `${LRM}${botData.highestActualClaim}${LRM} ريال`, inline: false },
+                        { name: '📋 في انتظار التأكيد', value: `${LRM}${botData.pendingSubmissions.size}${LRM}`, inline: true },
+                        { name: '⛔ محظورين (دون)', value: `${LRM}${botData.publicBlacklist.size}${LRM}`, inline: true },
+                        { name: '⛔ محظورين (عائلة)', value: `${LRM}${botData.familyBlacklist.size}${LRM}`, inline: true }
                     ],
                     footer: { text: 'سجلات المافيا لا تنسى' },
                     timestamp: new Date(),
@@ -352,7 +348,7 @@ client.on("messageCreate", async message => {
                 if (botData.pendingSubmissions.size === 0) return message.reply("لا يوجد طلبات معلقة.");
                 let desc = "";
                 for (let [uid, data] of botData.pendingSubmissions.entries()) {
-                    desc += `<@${uid}>: ${data.name} | ${formatMixed('', data.phone)}\n`;
+                    desc += `<@${uid}>: ${data.name} | ${LRM}${data.phone}${LRM}\n`;
                 }
                 const embed = new EmbedBuilder()
                     .setColor("#f39c12")
@@ -366,7 +362,7 @@ client.on("messageCreate", async message => {
                 const list = type === "family" ? botData.familyBlacklist : botData.publicBlacklist;
                 if (list.size === 0) return message.reply(`✅ قائمة ${type} السوداء فارغة.`);
                 let desc = "";
-                for (let id of list) desc += `<@${id}> (${id})\n`;
+                for (let id of list) desc += `<@${id}> (${LRM}${id}${LRM})\n`;
                 const embed = new EmbedBuilder()
                     .setColor("#8b0000")
                     .setTitle(`القائمة السوداء - ${type === "family" ? "العائلة" : "الدون"}`)
@@ -428,7 +424,7 @@ client.on("messageCreate", async message => {
             const expiry = cooldowns.get(userId) + 30000;
             if(Date.now() < expiry){
                 const left = ((expiry - Date.now()) / 1000).toFixed(1);
-                return message.reply(`تأنَّ قليلاً. انتظر ${left} ثانية.`).then(m => setTimeout(() => m.delete().catch(()=>null), 5000));
+                return message.reply(`تأنَّ قليلاً. انتظر ${LRM}${left}${LRM} ثانية.`).then(m => setTimeout(() => m.delete().catch(()=>null), 5000));
             }
         }
         cooldowns.set(userId, Date.now());
@@ -490,7 +486,7 @@ client.on("interactionCreate", async interaction => {
                 if(botData.claimedUsers.has(userId)){
                     const rejectEmbed = new EmbedBuilder()
                         .setColor("#ff0000")
-                        .setTitle("🚫 تم تسجيل اسمك مسبقًا")
+                        .setTitle("🚫 تم التسجيل مسبقًا")
                         .setDescription(`اسمك مسجل بالفعل في **دفتر الدون**.\nلقد استلمت عيديتك مسبقًا.`)
                         .setFooter({text:"دفتر الدون لا ينسى"});
                     return interaction.reply({ embeds:[rejectEmbed], ephemeral:true });
@@ -620,12 +616,12 @@ client.on("interactionCreate", async interaction => {
                             .setTitle("سجلات عيدية الدون الموثقة")
                             .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
                             .addFields(
-                                { name: "صاحب الطلب", value: `${interaction.user} (${interaction.user.id})`, inline: false },
+                                { name: "صاحب الطلب", value: `${interaction.user} (${LRM}${interaction.user.id}${LRM})`, inline: false },
                                 { name: "الاسم", value: data.name, inline: true },
-                                { name: "الإيميل", value: formatMixed('', data.email), inline: true },
-                                { name: "الرقم", value: formatMixed('', data.phone), inline: true },
-                                { name: "الآيبان", value: formatMixed('', data.iban), inline: false },
-                                { name: "المبلغ المستلم", value: formatMixed('', `${amount} ريال`), inline: false }
+                                { name: "الإيميل", value: `${LRM}${data.email}${LRM}`, inline: true },
+                                { name: "الرقم", value: `${LRM}${data.phone}${LRM}`, inline: true },
+                                { name: "الآيبان", value: `${LRM}${data.iban}${LRM}`, inline: false },
+                                { name: "المبلغ المستلم", value: `${LRM}${amount}${LRM} ريال`, inline: false }
                             )
                             .setTimestamp();
                         channel.send({embeds:[logEmbed]});
@@ -745,7 +741,7 @@ client.on("interactionCreate", async interaction => {
                             const banLog = new EmbedBuilder()
                                 .setColor("#8b0000")
                                 .setTitle("🚨 سجل القائمة السوداء (تلقائي)")
-                                .setDescription(`تم رصد محاولة احتيال متكررة لعيدية الدون!\n**المستخدم:** ${interaction.user}\n**ID:** ${userId}\n**السبب:** محاولة إدخال بيانات مكررة عمداً بعد التحذير.`)
+                                .setDescription(`تم رصد محاولة احتيال متكررة لعيدية الدون!\n**المستخدم:** ${interaction.user}\n**ID:** ${LRM}${userId}${LRM}\n**السبب:** محاولة إدخال بيانات مكررة عمداً بعد التحذير.`)
                                 .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
                                 .setTimestamp();
                             logChannel.send({embeds: [banLog]});
