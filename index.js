@@ -39,44 +39,137 @@ const TOKEN = process.env.TOKEN;
 const ALLOWED_GUILD = "1481377720330879078";      // سيرفر الدون المسموح
 const LOG_CHANNEL = "1481705807560310874";          // روم العائلة
 const PUBLIC_LOG_CHANNEL = "1481757344269336807";   // روم عيدية الدون
+const MEMORY_CHANNEL_ID = '1482070630424641737';    // روم الذاكرة الأبدية
 
 // أيدي الدون
 const ADMIN_IDS = ["1292916898484457538"];
 
 const VAULT_IMAGE = "https://images-ext-1.discordapp.net/external/7Pu3JB_gfrOlWCgqMDVaVNKSQyMwWfZFKF-nILTx30A/https/probot.media/khP5cxQfuI.jpg?format=webp&width=1376&height=860";
 
-// --- ذاكرة العائلة ---
-let claimedUsers = new Set(); 
-let familyBlacklist = new Set(); // المحظورين من عيدية العائلة
-let familyRewards = [
-    { amount: 5, chance: 70 },
-    { amount: 10, chance: 15 },
-    { amount: 20, chance: 10 },
-    { amount: 50, chance: 5 }
-];
+// ================= ذاكرة البوت (سيتم حفظها واستعادتها) =================
+let botData = {
+    claimedUsers: [],           // Set will be reconstructed
+    familyBlacklist: [],
+    familyRewards: [
+        { amount: 5, chance: 70 },
+        { amount: 10, chance: 15 },
+        { amount: 20, chance: 10 },
+        { amount: 50, chance: 5 }
+    ],
+    publicUsers: [],
+    publicNames: [],
+    publicEmails: [],
+    publicPhones: [],
+    publicIbans: [],
+    clickedUsers: [],
+    publicBlacklist: [],
+    duplicateStrikes: [],       // [ [userId, strikes], ... ]
+    pendingSubmissions: [],     // [ [userId, {name,email,phone,iban}], ... ]
+    publicBudgetLimit: 50,
+    totalPublicSpent: 0,
+    publicRewards: [
+        { amount: 0, chance: 55 },
+        { amount: 5, chance: 40 },
+        { amount: 10, chance: 5 }
+    ]
+};
 
-// --- ذاكرة عيدية الدون ---
-let publicUsers = new Set();
-let publicNames = new Set();
-let publicEmails = new Set();
-let publicPhones = new Set();
-let publicIbans = new Set();
-let clickedUsers = new Set(); 
-let publicBlacklist = new Set(); // المحظورين من عيدية الدون
-let duplicateStrikes = new Map(); 
-let pendingSubmissions = new Map(); 
+// تحويل المصفوفات إلى Sets/Maps بعد التحميل
+function convertLoadedData() {
+    botData.claimedUsers = new Set(botData.claimedUsers);
+    botData.familyBlacklist = new Set(botData.familyBlacklist);
+    botData.publicUsers = new Set(botData.publicUsers);
+    botData.publicNames = new Set(botData.publicNames);
+    botData.publicEmails = new Set(botData.publicEmails);
+    botData.publicPhones = new Set(botData.publicPhones);
+    botData.publicIbans = new Set(botData.publicIbans);
+    botData.clickedUsers = new Set(botData.clickedUsers);
+    botData.publicBlacklist = new Set(botData.publicBlacklist);
+    botData.duplicateStrikes = new Map(botData.duplicateStrikes);
+    botData.pendingSubmissions = new Map(botData.pendingSubmissions);
+}
 
-let publicBudgetLimit = 50; 
-let totalPublicSpent = 0; 
-let publicRewards = [
-    { amount: 0, chance: 55 },
-    { amount: 5, chance: 40 },
-    { amount: 10, chance: 5 }
-];
+// تهيئة البيانات للتحويل إلى JSON
+function prepareDataForSaving() {
+    return {
+        claimedUsers: Array.from(botData.claimedUsers),
+        familyBlacklist: Array.from(botData.familyBlacklist),
+        familyRewards: botData.familyRewards,
+        publicUsers: Array.from(botData.publicUsers),
+        publicNames: Array.from(botData.publicNames),
+        publicEmails: Array.from(botData.publicEmails),
+        publicPhones: Array.from(botData.publicPhones),
+        publicIbans: Array.from(botData.publicIbans),
+        clickedUsers: Array.from(botData.clickedUsers),
+        publicBlacklist: Array.from(botData.publicBlacklist),
+        duplicateStrikes: Array.from(botData.duplicateStrikes.entries()),
+        pendingSubmissions: Array.from(botData.pendingSubmissions.entries()),
+        publicBudgetLimit: botData.publicBudgetLimit,
+        totalPublicSpent: botData.totalPublicSpent,
+        publicRewards: botData.publicRewards
+    };
+}
 
-const cooldowns = new Map();
+// دالة حفظ البيانات في الروم
+async function saveToDiscord() {
+    try {
+        const channel = await client.channels.fetch(MEMORY_CHANNEL_ID);
+        if (!channel) return console.error("روم الذاكرة غير موجود!");
+        
+        const dataToSave = prepareDataForSaving();
+        const content = JSON.stringify(dataToSave);
+        await channel.send(`DATABASE_UPDATE|${content}`);
+        console.log("✅ تم حفظ الذاكرة بنجاح.");
+    } catch (error) {
+        console.error("خطأ في حفظ الذاكرة:", error);
+    }
+}
 
-// ================= الدوال المساعدة =================
+// دالة استرجاع البيانات عند التشغيل
+async function loadFromDiscord() {
+    try {
+        const channel = await client.channels.fetch(MEMORY_CHANNEL_ID);
+        const messages = await channel.messages.fetch({ limit: 10 });
+        const lastDbMsg = messages.find(m => m.content.startsWith('DATABASE_UPDATE|'));
+
+        if (lastDbMsg) {
+            const jsonStr = lastDbMsg.content.split('|')[1];
+            const loadedData = JSON.parse(jsonStr);
+            
+            // نسخ البيانات المحملة إلى botData
+            botData.claimedUsers = loadedData.claimedUsers || [];
+            botData.familyBlacklist = loadedData.familyBlacklist || [];
+            botData.familyRewards = loadedData.familyRewards || botData.familyRewards;
+            botData.publicUsers = loadedData.publicUsers || [];
+            botData.publicNames = loadedData.publicNames || [];
+            botData.publicEmails = loadedData.publicEmails || [];
+            botData.publicPhones = loadedData.publicPhones || [];
+            botData.publicIbans = loadedData.publicIbans || [];
+            botData.clickedUsers = loadedData.clickedUsers || [];
+            botData.publicBlacklist = loadedData.publicBlacklist || [];
+            botData.duplicateStrikes = loadedData.duplicateStrikes || [];
+            botData.pendingSubmissions = loadedData.pendingSubmissions || [];
+            botData.publicBudgetLimit = loadedData.publicBudgetLimit || 50;
+            botData.totalPublicSpent = loadedData.totalPublicSpent || 0;
+            botData.publicRewards = loadedData.publicRewards || botData.publicRewards;
+
+            convertLoadedData();
+            console.log("✅ تم استعادة ذاكرة الدون بنجاح.");
+        } else {
+            // إذا لم توجد رسالة سابقة، نستخدم القيم الافتراضية مع تحويلها
+            convertLoadedData();
+            console.log("⚪ لم يتم العثور على ذاكرة سابقة، البدء بذاكرة جديدة.");
+        }
+    } catch (error) {
+        console.error("خطأ في استعادة الذاكرة:", error);
+        // في حالة الفشل، نضمن تحويل القيم الافتراضية
+        convertLoadedData();
+    }
+}
+
+// ================= دوال مساعدة إضافية =================
+const cooldowns = new Map(); // هذا لا يحتاج للحفظ
+
 function getRandomReward(rewardsArray) {
     const random = Math.floor(Math.random() * 100) + 1;
     let sum = 0;
@@ -96,7 +189,6 @@ function getColorByAmount(amount){
     return "#7f8c8d";
 }
 
-// دالة لتحليل أوامر الفلوس (مثال: 5:70 10:30)
 function parseRewardsArgs(args) {
     let newRewards = [];
     let totalChance = 0;
@@ -111,19 +203,19 @@ function parseRewardsArgs(args) {
             }
         }
     }
-    if (totalChance !== 100 && newRewards.length > 0) return null; // التأكد أن النسبة 100%
+    if (totalChance !== 100 && newRewards.length > 0) return null;
     return newRewards.length > 0 ? newRewards : null;
 }
 
 // ================= تشغيل البوت =================
 client.once("ready", async () => {
     console.log("الدون جاهز... جاري فتح دفاتر المافيا.");
+    await loadFromDiscord(); // استعادة الذاكرة عند التشغيل
 });
 
 client.on("messageCreate", async message => {
     if(message.author.bot) return;
 
-    // حصر البوت للعمل في السيرفر المسموح أو في الخاص فقط
     if (message.guild && message.guild.id !== ALLOWED_GUILD) return;
 
     const args = message.content.split(/\s+/);
@@ -132,77 +224,103 @@ client.on("messageCreate", async message => {
 
     // ================= أوامر الإدارة (للدون فقط) =================
     if (isDon) {
-        // حظر وفك الحظر (العلني / عيدية الدون)
         if (command === "!eid_public_block" && args[1]) {
             const targetId = args[1].replace(/[<@!>]/g, '');
-            publicBlacklist.add(targetId);
+            botData.publicBlacklist.add(targetId);
+            await saveToDiscord();
             return message.reply(`تم إدراج ${targetId} في القائمة السوداء الخاصة بعيدية الدون.`);
         }
         if (command === "!eid_public_unblock" && args[1]) {
             const targetId = args[1].replace(/[<@!>]/g, '');
-            publicBlacklist.delete(targetId);
-            duplicateStrikes.delete(targetId);
+            botData.publicBlacklist.delete(targetId);
+            botData.duplicateStrikes.delete(targetId);
+            await saveToDiscord();
             return message.reply(`تم العفو عن ${targetId} من القائمة السوداء لعيدية الدون.`);
         }
 
-        // حظر وفك الحظر (العائلة)
         if (command === "!eid_family_block" && args[1]) {
             const targetId = args[1].replace(/[<@!>]/g, '');
-            familyBlacklist.add(targetId);
+            botData.familyBlacklist.add(targetId);
+            await saveToDiscord();
             return message.reply(`تم حظر ${targetId} من عيدية العائلة.`);
         }
         if (command === "!eid_family_unblock" && args[1]) {
             const targetId = args[1].replace(/[<@!>]/g, '');
-            familyBlacklist.delete(targetId);
+            botData.familyBlacklist.delete(targetId);
+            await saveToDiscord();
             return message.reply(`تم فك حظر ${targetId} من عيدية العائلة.`);
         }
 
-        // تصفير الميزانية والسجلات
         if (command === "!eid_public_reset") {
-            publicUsers.clear(); publicNames.clear(); publicEmails.clear();
-            publicPhones.clear(); publicIbans.clear(); clickedUsers.clear();
-            duplicateStrikes.clear(); pendingSubmissions.clear();
-            totalPublicSpent = 0;
+            botData.publicUsers.clear();
+            botData.publicNames.clear();
+            botData.publicEmails.clear();
+            botData.publicPhones.clear();
+            botData.publicIbans.clear();
+            botData.clickedUsers.clear();
+            botData.duplicateStrikes.clear();
+            botData.pendingSubmissions.clear();
+            botData.totalPublicSpent = 0;
+            await saveToDiscord();
             return message.reply("تم تصفير الميزانية ومسح سجلات عيدية الدون لبدء عيد جديد.");
         }
         if (command === "!eid_family_reset") {
-            claimedUsers.clear();
+            botData.claimedUsers.clear();
+            await saveToDiscord();
             return message.reply("تم مسح سجلات المستلمين لبدء عيدية عائلة جديدة.");
         }
 
-        // تحديد الميزانية
         if (command === "!eid_public_amount" && args[1]) {
             const newLimit = parseInt(args[1]);
             if (!isNaN(newLimit)) {
-                publicBudgetLimit = newLimit;
+                botData.publicBudgetLimit = newLimit;
+                await saveToDiscord();
                 return message.reply(`تم تعيين الحد الأقصى للميزانية بنجاح.`);
             }
         }
 
-        // تحديد المبالغ ونسبها لعيدية الدون
-        // مثال: !eid_public_money 0:50 5:30 10:20
         if (command === "!eid_public_money") {
             const newRewards = parseRewardsArgs(args);
             if (newRewards) {
-                publicRewards = newRewards;
+                botData.publicRewards = newRewards;
+                await saveToDiscord();
                 return message.reply("تم تعيين المبالغ ونسب الظهور لعيدية الدون بنجاح.");
             } else {
                 return message.reply("صيغة خاطئة أو مجموع النسب لا يساوي 100. استخدم الصيغة: `المبلغ:النسبة` مثال: `!eid_public_money 0:50 5:30 10:20`");
             }
         }
 
-        // تحديد المبالغ ونسبها لعيدية العائلة
         if (command === "!eid_family_money") {
             const newRewards = parseRewardsArgs(args);
             if (newRewards) {
-                familyRewards = newRewards;
+                botData.familyRewards = newRewards;
+                await saveToDiscord();
                 return message.reply("تم تعيين المبالغ ونسب الظهور لعيدية العائلة بنجاح.");
             } else {
                 return message.reply("صيغة خاطئة أو مجموع النسب لا يساوي 100. استخدم الصيغة: `المبلغ:النسبة` مثال: `!eid_family_money 5:50 10:30 50:20`");
             }
         }
 
-        // أمر المساعدة
+        if (command === "!stats") {
+            const totalDistributed = botData.totalPublicSpent; // يمكنك أيضًا حساب totalDistributed للعائلة إذا أردت
+            const claimersCount = botData.claimedUsers.size;
+            // أعلى عيدية من publicRewards? يمكننا حسابها من السجلات، ولكن سنبسطها:
+            const highestClaim = Math.max(...botData.publicRewards.map(r => r.amount), 0);
+
+            const statsEmbed = {
+                color: 0xffd700,
+                title: '📊 إحصائيات إمبراطورية الدون',
+                fields: [
+                    { name: '💰 إجمالي المبالغ الموزعة (عيدية الدون)', value: `${botData.totalPublicSpent} ريال`, inline: true },
+                    { name: '👥 عدد المستفيدين (العائلة)', value: `${botData.claimedUsers.size} شخص`, inline: true },
+                    { name: '🏆 أعلى عيدية', value: `${highestClaim} ريال`, inline: false },
+                ],
+                footer: { text: 'سجلات المافيا لا تنسى' },
+                timestamp: new Date(),
+            };
+            return message.reply({ embeds: [statsEmbed] });
+        }
+
         if (command === "!help") {
             const helpEmbed = new EmbedBuilder()
                 .setColor("#d4af37")
@@ -215,7 +333,8 @@ client.on("messageCreate", async message => {
                     { name: "!eid_family_reset", value: "تصفير سجلات المستلمين لعيدية العائلة" },
                     { name: "!eid_public_amount [رقم]", value: "تحديد ميزانية عيدية الدون" },
                     { name: "!eid_public_money [المبلغ:النسبة]", value: "تحديد المبالغ ونسب ظهورها لعيدية الدون. مثال: `!eid_public_money 0:50 10:50`" },
-                    { name: "!eid_family_money [المبلغ:النسبة]", value: "تحديد المبالغ ونسب ظهورها لعيدية العائلة." }
+                    { name: "!eid_family_money [المبلغ:النسبة]", value: "تحديد المبالغ ونسب ظهورها لعيدية العائلة." },
+                    { name: "!stats", value: "عرض إحصائيات عامة (للدون فقط)." }
                 )
                 .setFooter({ text: "للاستخدام من قبل الدون فقط" });
             return message.reply({ embeds: [helpEmbed] });
@@ -224,7 +343,6 @@ client.on("messageCreate", async message => {
 
     // ================= أمر العيدية الأساسي =================
     if(command === "!eid"){
-        // في السيرفر: يحق فقط للإدارة إرسال الأمر
         if (message.guild) {
             const isOwner = message.guild.ownerId === message.author.id;
             const isAdmin = message.member.permissions.has(PermissionsBitField.Flags.Administrator);
@@ -235,7 +353,6 @@ client.on("messageCreate", async message => {
 
         const userId = message.author.id;
 
-        // حماية السبام (30 ثانية)
         if(cooldowns.has(userId)){
             const expiry = cooldowns.get(userId) + 30000;
             if(Date.now() < expiry){
@@ -246,7 +363,6 @@ client.on("messageCreate", async message => {
         cooldowns.set(userId, Date.now());
 
         try {
-            // --- 1. سيرفر العائلة ---
             if(message.guild){
                 const row = new ActionRowBuilder().addComponents(
                     new ButtonBuilder()
@@ -264,15 +380,12 @@ client.on("messageCreate", async message => {
                     .setTimestamp();
 
                 return message.channel.send({ embeds:[embed], components:[row] });
-            } 
-            
-            // --- 2. الخاص (عيدية الدون) ---
-            else {
+            } else {
                 const row = new ActionRowBuilder().addComponents(
                     new ButtonBuilder()
                     .setCustomId("public_button")
                     .setLabel("أبي عيدية")
-                    .setStyle(ButtonStyle.Primary) // اللون الأزرق كما طلبت
+                    .setStyle(ButtonStyle.Primary)
                 );
 
                 const embed = new EmbedBuilder()
@@ -292,20 +405,17 @@ client.on("messageCreate", async message => {
 });
 
 client.on("interactionCreate", async interaction => {
-    // التأكد أن التفاعل من السيرفر المسموح أو من الخاص
     if (interaction.guild && interaction.guild.id !== ALLOWED_GUILD) return;
 
     try {
-        // ================= الأزرار =================
         if(interaction.isButton()){
             const userId = interaction.user.id;
 
-            // --- زر عيدية العائلة ---
             if(interaction.customId === "eidiya_family_button"){
-                if(familyBlacklist.has(userId)){
+                if(botData.familyBlacklist.has(userId)){
                     return interaction.reply({ content: "أنت محظور من عيدية العائلة بأمر الدون.", ephemeral: true });
                 }
-                if(claimedUsers.has(userId)){
+                if(botData.claimedUsers.has(userId)){
                     const rejectEmbed = new EmbedBuilder()
                         .setColor("#ff0000")
                         .setTitle("🚫 تم تسجيل اسمك مسبقًا")
@@ -328,9 +438,8 @@ client.on("interactionCreate", async interaction => {
                 await interaction.showModal(modal);
             }
 
-            // --- زر عيدية الدون (الخاص) ---
             if(interaction.customId === "public_button"){
-                if(publicBlacklist.has(userId)){
+                if(botData.publicBlacklist.has(userId)){
                     const blacklistEmbed = new EmbedBuilder()
                         .setColor("#000000")
                         .setTitle("أنت في القائمة السوداء ☠️")
@@ -339,8 +448,7 @@ client.on("interactionCreate", async interaction => {
                     return interaction.reply({ embeds:[blacklistEmbed], ephemeral:true });
                 }
 
-                if(clickedUsers.has(userId) && !pendingSubmissions.has(userId)){
-                    // إذا أرسل ولم تكن بياناته معلقة في انتظار التأكيد
+                if(botData.clickedUsers.has(userId) && !botData.pendingSubmissions.has(userId)){
                     const alreadyClickedEmbed = new EmbedBuilder()
                         .setColor("#e67e22")
                         .setTitle("تم استلام بياناتك مسبقاً 📜")
@@ -348,7 +456,7 @@ client.on("interactionCreate", async interaction => {
                     return interaction.reply({ embeds:[alreadyClickedEmbed], ephemeral:true });
                 }
 
-                if(totalPublicSpent >= publicBudgetLimit){
+                if(botData.totalPublicSpent >= botData.publicBudgetLimit){
                     const closedVaultEmbed = new EmbedBuilder()
                         .setColor("#34495e")
                         .setTitle("الخزنة أُغلقت 🚪")
@@ -356,7 +464,6 @@ client.on("interactionCreate", async interaction => {
                     return interaction.reply({ embeds:[closedVaultEmbed], ephemeral:true });
                 }
 
-                // فتح المودال لإدخال البيانات
                 const modal = new ModalBuilder()
                     .setCustomId("public_modal")
                     .setTitle("بياناتك لتسليم عيدية الدون");
@@ -366,9 +473,8 @@ client.on("interactionCreate", async interaction => {
                 const phoneInput = new TextInputBuilder().setCustomId("input_phone").setLabel("الهاتف (10 أرقام)").setStyle(TextInputStyle.Short).setRequired(true);
                 const ibanInput = new TextInputBuilder().setCustomId("input_iban").setLabel("الآيبان (SA + 22 رقم)").setStyle(TextInputStyle.Short).setRequired(true);
 
-                // إذا كان المستخدم يود التعديل، نملأ البيانات القديمة
-                if (pendingSubmissions.has(userId)) {
-                    const oldData = pendingSubmissions.get(userId);
+                if (botData.pendingSubmissions.has(userId)) {
+                    const oldData = botData.pendingSubmissions.get(userId);
                     nameInput.setValue(oldData.name);
                     emailInput.setValue(oldData.email);
                     phoneInput.setValue(oldData.phone);
@@ -385,25 +491,27 @@ client.on("interactionCreate", async interaction => {
                 await interaction.showModal(modal);
             }
 
-            // --- أزرار التأكيد وتعديل البيانات (عيدية الدون) ---
             if(interaction.customId === "confirm_data"){
-                const data = pendingSubmissions.get(userId);
+                const data = botData.pendingSubmissions.get(userId);
                 if(!data) return interaction.reply({ content: "انتهت صلاحية جلستك.", ephemeral: true });
 
-                if(totalPublicSpent >= publicBudgetLimit){
+                if(botData.totalPublicSpent >= botData.publicBudgetLimit){
                     return interaction.update({ 
                         embeds: [new EmbedBuilder().setColor("#34495e").setTitle("الخزنة أُغلقت 🚪").setDescription("أغلق الدون الخزنة قبل وصول بياناتك.")],
                         components: [] 
                     });
                 }
 
-                publicUsers.add(userId);
-                publicNames.add(data.name);
-                publicEmails.add(data.email);
-                publicPhones.add(data.phone);
-                publicIbans.add(data.iban);
-                pendingSubmissions.delete(userId); 
-                clickedUsers.add(userId);
+                botData.publicUsers.add(userId);
+                botData.publicNames.add(data.name);
+                botData.publicEmails.add(data.email);
+                botData.publicPhones.add(data.phone);
+                botData.publicIbans.add(data.iban);
+                botData.pendingSubmissions.delete(userId); 
+                botData.clickedUsers.add(userId);
+
+                // حفظ مؤقت قبل تحديد المبلغ (لأن التحديث سيحدث بعد 8 ثوانٍ)
+                await saveToDiscord();
 
                 const waitingEmbed = new EmbedBuilder()
                     .setColor("#555555")
@@ -414,9 +522,12 @@ client.on("interactionCreate", async interaction => {
                 await interaction.update({ embeds:[waitingEmbed], components:[] });
 
                 setTimeout(async () => {
-                    let amount = getRandomReward(publicRewards);
-                    if(totalPublicSpent + amount > publicBudgetLimit) amount = publicBudgetLimit - totalPublicSpent; 
-                    totalPublicSpent += amount;
+                    let amount = getRandomReward(botData.publicRewards);
+                    if(botData.totalPublicSpent + amount > botData.publicBudgetLimit) amount = botData.publicBudgetLimit - botData.totalPublicSpent; 
+                    botData.totalPublicSpent += amount;
+
+                    // حفظ بعد تحديث totalPublicSpent
+                    await saveToDiscord();
 
                     let desc = amount === 0 
                         ? `نفث الدون دخان سيجاره وقرر أنك لا تستحق شيئاً.\n\nالمبلغ: **0 ريال**\nاعتبر بقاءك آمناً هو أعظم عيدية.`
@@ -452,9 +563,7 @@ client.on("interactionCreate", async interaction => {
             }
 
             if(interaction.customId === "edit_data"){
-                // سيتم إعادة إظهار المودال عبر زر `public_button`، لذا نوجه المستخدم للضغط على الزر الأزرق مرة أخرى
-                // أو نقوم بعرض المودال مباشرة هنا عبر تكرار الكود
-                const data = pendingSubmissions.get(userId) || { name:"", email:"", phone:"", iban:"" };
+                const data = botData.pendingSubmissions.get(userId) || { name:"", email:"", phone:"", iban:"" };
                 const modal = new ModalBuilder()
                     .setCustomId("public_modal")
                     .setTitle("تعديل بياناتك");
@@ -474,8 +583,9 @@ client.on("interactionCreate", async interaction => {
             }
 
             if(interaction.customId === "cancel_data"){
-                pendingSubmissions.delete(userId);
-                clickedUsers.delete(userId); 
+                botData.pendingSubmissions.delete(userId);
+                botData.clickedUsers.delete(userId);
+                await saveToDiscord();
 
                 const cancelEmbed = new EmbedBuilder()
                     .setColor("#7f8c8d")
@@ -485,11 +595,9 @@ client.on("interactionCreate", async interaction => {
             }
         }
 
-        // ================= النماذج (Modals) =================
         if(interaction.isModalSubmit()){
             const userId = interaction.user.id;
 
-            // --- مودل العائلة ---
             if(interaction.customId === "family_modal"){
                 let iban = interaction.fields.getTextInputValue("input_family_iban").replace(/\s+/g, '');
 
@@ -497,7 +605,8 @@ client.on("interactionCreate", async interaction => {
                     return interaction.reply({ content: "🚫 صيغة الآيبان خاطئة! يجب أن يبدأ بـ SA ويليه 22 رقماً.", ephemeral: true });
                 }
 
-                claimedUsers.add(userId);
+                botData.claimedUsers.add(userId);
+                await saveToDiscord();
 
                 const waitingEmbed = new EmbedBuilder()
                     .setColor("#2f3136")
@@ -508,7 +617,7 @@ client.on("interactionCreate", async interaction => {
                 await interaction.reply({ embeds:[waitingEmbed], ephemeral:true });
 
                 setTimeout(async () => {
-                    const amount = getRandomReward(familyRewards);
+                    const amount = getRandomReward(botData.familyRewards);
                     const resultEmbed = new EmbedBuilder()
                         .setColor(getColorByAmount(amount))
                         .setTitle("عيدية العائلة")
@@ -530,7 +639,6 @@ client.on("interactionCreate", async interaction => {
                 }, 8000);
             }
 
-            // --- مودل عيدية الدون ---
             if(interaction.customId === "public_modal"){
                 const name = interaction.fields.getTextInputValue("input_name").trim();
                 const email = interaction.fields.getTextInputValue("input_email").trim();
@@ -547,15 +655,16 @@ client.on("interactionCreate", async interaction => {
                     return interaction.reply({ content: "🚫 الآيبان غير صحيح. يجب أن يبدأ بـ SA ويليه 22 رقماً.", ephemeral: true });
                 }
 
-                // نظام كشف الغش والتكرار (إذا لم تكن البيانات للشخص نفسه في محاولة التعديل)
-                const isUpdating = pendingSubmissions.has(userId);
-                if (!isUpdating && (publicNames.has(name) || publicEmails.has(email) || publicPhones.has(phone) || publicIbans.has(iban))) {
-                    let strikes = duplicateStrikes.get(userId) || 0;
+                const isUpdating = botData.pendingSubmissions.has(userId);
+                if (!isUpdating && (botData.publicNames.has(name) || botData.publicEmails.has(email) || botData.publicPhones.has(phone) || botData.publicIbans.has(iban))) {
+                    let strikes = botData.duplicateStrikes.get(userId) || 0;
                     strikes++;
-                    duplicateStrikes.set(userId, strikes);
+                    botData.duplicateStrikes.set(userId, strikes);
+                    await saveToDiscord();
 
                     if(strikes >= 2){
-                        publicBlacklist.add(userId);
+                        botData.publicBlacklist.add(userId);
+                        await saveToDiscord();
                         
                         const logChannel = client.channels.cache.get(PUBLIC_LOG_CHANNEL);
                         if(logChannel){
@@ -582,7 +691,8 @@ client.on("interactionCreate", async interaction => {
                     }
                 }
 
-                pendingSubmissions.set(userId, { name, email, phone, iban });
+                botData.pendingSubmissions.set(userId, { name, email, phone, iban });
+                await saveToDiscord();
 
                 const confirmEmbed = new EmbedBuilder()
                     .setColor("#f39c12")
@@ -597,7 +707,6 @@ client.on("interactionCreate", async interaction => {
                     new ButtonBuilder().setCustomId("cancel_data").setLabel("إلغاء الطلب").setStyle(ButtonStyle.Danger)
                 );
 
-                // إذا كان المستخدم يقوم بتعديل البيانات، نقوم بتحديث الرد السابق، وإلا نقوم بإنشاء رد جديد
                 if (interaction.message) {
                     await interaction.update({ embeds:[confirmEmbed], components:[confirmRow] }).catch(async () => {
                          await interaction.reply({ embeds:[confirmEmbed], components:[confirmRow], ephemeral:true });
