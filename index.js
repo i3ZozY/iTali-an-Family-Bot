@@ -5,8 +5,16 @@ app.get("/", (req, res) => {
     res.send("Bot is alive");
 });
 
+// معالجة أخطاء الخادم
+app.use((err, req, res, next) => {
+    console.error("Server error:", err);
+    res.status(500).send("Something broke!");
+});
+
 app.listen(3000, () => {
-    console.log("Keep alive server started");
+    console.log("Keep alive server started on port 3000");
+}).on('error', (err) => {
+    console.error("Failed to start server:", err);
 });
 
 const {
@@ -42,6 +50,9 @@ const PUBLIC_LOG_CHANNEL = "1481757344269336807";
 const MEMORY_CHANNEL_ID = '1482070630424641737';
 const ADMIN_IDS = ["1292916898484457538"];
 const VAULT_IMAGE = "https://images-ext-1.discordapp.net/external/7Pu3JB_gfrOlWCgqMDVaVNKSQyMwWfZFKF-nILTx30A/https/probot.media/khP5cxQfuI.jpg?format=webp&width=1376&height=860";
+
+// ================= نظام التبريد (يتم تعريفه مرة واحدة) =================
+const cooldowns = new Map();
 
 // ================= ذاكرة البوت =================
 let botData = {
@@ -109,7 +120,7 @@ function prepareDataForSaving() {
     };
 }
 
-// ================= نظام الحفظ المتسلسل =================
+// ================= نظام الحفظ المتسلسل مع إرسال الملف إذا كان الحجم كبيراً =================
 let saveQueue = Promise.resolve();
 let saveRetryCount = 0;
 const MAX_RETRIES = 3;
@@ -121,7 +132,17 @@ async function saveToDiscord() {
             if (!channel) throw new Error("روم الذاكرة غير موجود!");
             const dataToSave = prepareDataForSaving();
             const content = JSON.stringify(dataToSave);
-            await channel.send(`DATABASE_UPDATE|${content}`);
+
+            // إذا تجاوز المحتوى 1900 حرف، نرسله كملف مرفق
+            if (content.length > 1900) {
+                const buffer = Buffer.from(content, 'utf-8');
+                await channel.send({
+                    content: `DATABASE_UPDATE|FILE`,
+                    files: [{ attachment: buffer, name: 'backup.json' }]
+                });
+            } else {
+                await channel.send(`DATABASE_UPDATE|${content}`);
+            }
             console.log("✅ تم حفظ الذاكرة بنجاح.");
             saveRetryCount = 0;
         } catch (error) {
@@ -145,8 +166,21 @@ async function loadFromDiscord() {
         const lastDbMsg = messages.find(m => m.content.startsWith('DATABASE_UPDATE|'));
 
         if (lastDbMsg) {
-            const jsonStr = lastDbMsg.content.split('|')[1];
-            const loadedData = JSON.parse(jsonStr);
+            let loadedData;
+            if (lastDbMsg.content.startsWith('DATABASE_UPDATE|FILE')) {
+                // إذا كانت البيانات في ملف مرفق
+                const attachment = lastDbMsg.attachments.first();
+                if (attachment) {
+                    const response = await fetch(attachment.url);
+                    const text = await response.text();
+                    loadedData = JSON.parse(text);
+                } else {
+                    throw new Error("الملف المرفق غير موجود");
+                }
+            } else {
+                const jsonStr = lastDbMsg.content.split('|')[1];
+                loadedData = JSON.parse(jsonStr);
+            }
 
             botData.claimedUsers = loadedData.claimedUsers || [];
             botData.familyBlacklist = loadedData.familyBlacklist || [];
@@ -233,6 +267,12 @@ function parseRewardsArgs(args) {
     if (new Set(amounts).size !== amounts.length) return { error: "duplicate" };
     if (totalChance !== 100) return { error: "chance" };
     return newRewards;
+}
+
+// دالة للتحقق من صحة الإيميل باستخدام regex
+function isValidEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
 }
 
 // ================= تشغيل البوت =================
@@ -418,8 +458,7 @@ client.on("messageCreate", async message => {
 
         const userId = message.author.id;
 
-        // كود السبام
-        const cooldowns = new Map(); // تعريف مؤقت
+        // نظام التبريد
         if(cooldowns.has(userId)){
             const expiry = cooldowns.get(userId) + 30000;
             if(Date.now() < expiry){
@@ -564,9 +603,9 @@ client.on("interactionCreate", async interaction => {
                 const data = botData.pendingSubmissions.get(userId);
                 if(!data) return interaction.reply({ content: "انتهت صلاحية جلستك.", ephemeral: true });
                 if(botData.totalPublicSpent >= botData.publicBudgetLimit){
-                    return interaction.update({ 
+                    return interaction.reply({ 
                         embeds: [new EmbedBuilder().setColor("#34495e").setTitle("الخزنة أُغلقت 🚪").setDescription("أغلق الدون الخزنة قبل وصول بياناتك.")],
-                        components: [] 
+                        ephemeral: true
                     });
                 }
 
@@ -585,7 +624,7 @@ client.on("interactionCreate", async interaction => {
                     .setDescription(`تم ارسال بياناتك **للدون**.\nيتم الآن تحديد نصيبك من الخزنة.. الصبر مطلوب الآن.`)
                     .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }));
 
-                await interaction.update({ embeds:[waitingEmbed], components:[] });
+                await interaction.reply({ embeds:[waitingEmbed], ephemeral:true });
 
                 setTimeout(async () => {
                     let amount = getRandomReward(botData.publicRewards);
@@ -607,7 +646,9 @@ client.on("interactionCreate", async interaction => {
                         .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
                         .setFooter({text:"انتهت المعاملة."});
 
-                    try { await interaction.editReply({ embeds:[resultEmbed] }); } catch(e){}
+                    try { 
+                        await interaction.editReply({ embeds:[resultEmbed] }); 
+                    } catch(e){}
 
                     const channel = client.channels.cache.get(PUBLIC_LOG_CHANNEL);
                     if(channel){
@@ -658,7 +699,7 @@ client.on("interactionCreate", async interaction => {
                     .setColor("#7f8c8d")
                     .setTitle("تم سحب الطلب")
                     .setDescription("تراجعت واحتفظت ببياناتك. خيار حكيم.");
-                await interaction.update({ embeds:[cancelEmbed], components:[] });
+                await interaction.reply({ embeds:[cancelEmbed], ephemeral:true });
             }
         }
 
@@ -715,8 +756,9 @@ client.on("interactionCreate", async interaction => {
                 const phone = interaction.fields.getTextInputValue("input_phone").replace(/\s+/g, '');
                 const iban = interaction.fields.getTextInputValue("input_iban").replace(/\s+/g, '');
 
-                if(!email.includes("@")){
-                    return interaction.reply({ content: "🚫 الإيميل غير صحيح. يجب أن يحتوي على علامة @.", ephemeral: true });
+                // التحقق من صحة الإيميل باستخدام regex محسن
+                if(!isValidEmail(email)){
+                    return interaction.reply({ content: "🚫 الإيميل غير صحيح. الرجاء إدخال إيميل صحيح (مثل: name@domain.com).", ephemeral: true });
                 }
                 if(!/^\d{10}$/.test(phone)){
                     return interaction.reply({ content: "🚫 رقم الهاتف غير صحيح. يجب أن يتكون من 10 أرقام فقط.", ephemeral: true });
@@ -777,13 +819,7 @@ client.on("interactionCreate", async interaction => {
                     new ButtonBuilder().setCustomId("cancel_data").setLabel("إلغاء الطلب").setStyle(ButtonStyle.Danger)
                 );
 
-                if (interaction.message) {
-                    await interaction.update({ embeds:[confirmEmbed], components:[confirmRow] }).catch(async () => {
-                         await interaction.reply({ embeds:[confirmEmbed], components:[confirmRow], ephemeral:true });
-                    });
-                } else {
-                    await interaction.reply({ embeds:[confirmEmbed], components:[confirmRow], ephemeral:true });
-                }
+                await interaction.reply({ embeds:[confirmEmbed], components:[confirmRow], ephemeral:true });
             }
         }
     } catch (error) {
