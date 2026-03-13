@@ -132,7 +132,7 @@ client.once("ready", async () => {
 client.on("messageCreate", async message => {
     if(message.author.bot) return;
 
-    if(message.content === "!eid_server"){
+    if(message.content === "!eid"){
         
         // --- 1. إذا كان الأمر في سيرفر (عيدية العائلة - الكود الأصلي) ---
         if(message.guild){
@@ -465,5 +465,6 @@ client.on("interactionCreate", async interaction => {
 });
 
 client.login(TOKEN);
+
 
 
