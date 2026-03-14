@@ -5,7 +5,6 @@ app.get("/", (req, res) => {
     res.send("Bot is alive");
 });
 
-// معالجة أخطاء الخادم
 app.use((err, req, res, next) => {
     console.error("Server error:", err);
     res.status(500).send("Something broke!");
@@ -51,7 +50,7 @@ const MEMORY_CHANNEL_ID = '1482070630424641737';
 const ADMIN_IDS = ["1292916898484457538"];
 const VAULT_IMAGE = "https://images-ext-1.discordapp.net/external/7Pu3JB_gfrOlWCgqMDVaVNKSQyMwWfZFKF-nILTx30A/https/probot.media/khP5cxQfuI.jpg?format=webp&width=1376&height=860";
 
-// ================= نظام التبريد (يتم تعريفه مرة واحدة) =================
+// ================= نظام التبريد =================
 const cooldowns = new Map();
 
 // ================= ذاكرة البوت =================
@@ -133,7 +132,6 @@ async function saveToDiscord() {
             const dataToSave = prepareDataForSaving();
             const content = JSON.stringify(dataToSave);
 
-            // إذا تجاوز المحتوى 1900 حرف، نرسله كملف مرفق
             if (content.length > 1900) {
                 const buffer = Buffer.from(content, 'utf-8');
                 await channel.send({
@@ -168,7 +166,6 @@ async function loadFromDiscord() {
         if (lastDbMsg) {
             let loadedData;
             if (lastDbMsg.content.startsWith('DATABASE_UPDATE|FILE')) {
-                // إذا كانت البيانات في ملف مرفق
                 const attachment = lastDbMsg.attachments.first();
                 if (attachment) {
                     const response = await fetch(attachment.url);
@@ -226,7 +223,7 @@ function startCleanupInterval() {
     }, 3600000);
 }
 
-// ================= علامة LRM لضبط الاتجاه =================
+// ================= علامة LRM =================
 const LRM = '\u200E';
 
 // ================= الدوال المساعدة =================
@@ -269,7 +266,6 @@ function parseRewardsArgs(args) {
     return newRewards;
 }
 
-// دالة للتحقق من صحة الإيميل باستخدام regex
 function isValidEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -458,7 +454,6 @@ client.on("messageCreate", async message => {
 
         const userId = message.author.id;
 
-        // نظام التبريد
         if(cooldowns.has(userId)){
             const expiry = cooldowns.get(userId) + 30000;
             if(Date.now() < expiry){
@@ -624,7 +619,8 @@ client.on("interactionCreate", async interaction => {
                     .setDescription(`تم ارسال بياناتك **للدون**.\nيتم الآن تحديد نصيبك من الخزنة.. الصبر مطلوب الآن.`)
                     .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }));
 
-                await interaction.reply({ embeds:[waitingEmbed], ephemeral:true });
+                // تعديل: استخدام update بدلاً من reply لإخفاء الأزرار
+                await interaction.update({ embeds:[waitingEmbed], components:[] });
 
                 setTimeout(async () => {
                     let amount = getRandomReward(botData.publicRewards);
@@ -699,7 +695,9 @@ client.on("interactionCreate", async interaction => {
                     .setColor("#7f8c8d")
                     .setTitle("تم سحب الطلب")
                     .setDescription("تراجعت واحتفظت ببياناتك. خيار حكيم.");
-                await interaction.reply({ embeds:[cancelEmbed], ephemeral:true });
+
+                // تعديل: استخدام update بدلاً من reply لإخفاء الأزرار
+                await interaction.update({ embeds:[cancelEmbed], components:[] });
             }
         }
 
@@ -756,7 +754,6 @@ client.on("interactionCreate", async interaction => {
                 const phone = interaction.fields.getTextInputValue("input_phone").replace(/\s+/g, '');
                 const iban = interaction.fields.getTextInputValue("input_iban").replace(/\s+/g, '');
 
-                // التحقق من صحة الإيميل باستخدام regex محسن
                 if(!isValidEmail(email)){
                     return interaction.reply({ content: "🚫 الإيميل غير صحيح. الرجاء إدخال إيميل صحيح (مثل: name@domain.com).", ephemeral: true });
                 }
